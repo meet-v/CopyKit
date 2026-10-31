@@ -1,53 +1,104 @@
+import { Menu } from 'obsidian';
 import { OUTLINE_ITEM_SELECTOR } from '../constants';
 
 /**
- * Experimental Outline adapter. Obsidian does not expose a public API for
- * extending the built-in Outline context menu, so this adds a small action
- * button to each Outline row instead of replacing Obsidian's native menu.
+ * Experimental integration with Obsidian's built-in Outline view.
+ *
+ * Obsidian does not currently expose a public API for registering an item in
+ * the built-in Outline view's context menu. This adapter therefore delegates
+ * right-clicks on Outline tree items and displays an Obsidian Menu containing
+ * the plugin action. It does not add controls or modify the Outline DOM.
+ *
+ * The callback receives the visible heading text and, when available, the
+ * zero-based source line reported by the Outline DOM.
  */
 export class ExperimentalOutlineIntegration {
-  private observer: MutationObserver | null = null;
   private enabled = false;
 
-  constructor(private readonly onHeadingAction: (headingText: string, line: number | undefined) => void) {}
+  constructor(
+    private readonly onHeadingAction: (
+      headingText: string,
+      line: number | undefined,
+    ) => void,
+  ) {}
 
   enable(): void {
     if (this.enabled) return;
+
     this.enabled = true;
-    this.observer = new MutationObserver(() => this.attachActions());
-    this.observer.observe(document.body, { childList: true, subtree: true });
-    this.attachActions();
+    document.addEventListener('contextmenu', this.handleContextMenu, true);
   }
 
   disable(): void {
+    if (!this.enabled) return;
+
     this.enabled = false;
-    this.observer?.disconnect();
-    this.observer = null;
-    document.querySelectorAll<HTMLElement>('.cet-outline-action').forEach((button) => button.remove());
+    document.removeEventListener('contextmenu', this.handleContextMenu, true);
   }
 
-  private attachActions(): void {
-    if (!this.enabled) return;
-    document.querySelectorAll<HTMLElement>(OUTLINE_ITEM_SELECTOR).forEach((item) => {
-      if (item.querySelector('.cet-outline-action')) return;
-      const label = item.querySelector<HTMLElement>('.tree-item-inner');
-      const headingText = label?.textContent?.trim();
-      if (!headingText) return;
+  /**
+   * Use delegated event handling because Outline rows are rebuilt dynamically.
+   * No MutationObserver or injected buttons are required.
+   */
+  private readonly handleContextMenu = (event: MouseEvent): void => {
+    if (!this.enabled || !(event.target instanceof Element)) return;
 
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cet-outline-action clickable-icon';
-      button.setAttribute('aria-label', `Copy or export heading: ${headingText}`);
-      button.setAttribute('title', 'Copy and export this heading');
-      button.textContent = '⇧';
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const rawLine = item.dataset.line ?? item.getAttribute('data-line');
-        const line = rawLine && /^\d+$/.test(rawLine) ? Number(rawLine) : undefined;
-        this.onHeadingAction(headingText, line);
-      });
-      item.append(button);
-    });
+    const item = event.target.closest<HTMLElement>(OUTLINE_ITEM_SELECTOR);
+    if (!item) return;
+
+    const headingElement = item.querySelector<HTMLElement>('.tree-item-inner');
+    const headingText = headingElement?.textContent?.trim();
+
+    if (!headingText) return;
+
+    // Prevent the browser's native context menu and show an Obsidian Menu.
+    event.preventDefault();
+    event.stopPropagation();
+
+    const line = headingElement
+      ? this.getSourceLine(item, headingElement)
+      : undefined;
+
+    new Menu()
+      .addItem((menuItem) => {
+        menuItem
+          .setTitle('Copy and export…')
+          .setIcon('copy')
+          .onClick(() => this.onHeadingAction(headingText, line));
+      })
+      .showAtMouseEvent(event);
+  };
+
+  /**
+   * Obsidian's internal Outline DOM has changed between releases. Check the
+   * row and its visible label for the common line-number attributes, without
+   * relying on private React/Vue component state or adding DOM elements.
+   */
+  private getSourceLine(
+    item: HTMLElement,
+    headingElement: HTMLElement,
+  ): number | undefined {
+    const selfElement = item.querySelector<HTMLElement>('.tree-item-self');
+    const candidates = [item, selfElement, headingElement];
+
+    const lineAttributes = [
+      'data-line',
+      'data-heading-line',
+      'data-line-number',
+      'data-start-line',
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+
+      for (const attribute of lineAttributes) {
+        const rawValue = candidate.getAttribute(attribute);
+        if (rawValue && /^\d+$/.test(rawValue)) {
+          return Number(rawValue);
+        }
+      }
+    }
+
+    return undefined;
   }
 }

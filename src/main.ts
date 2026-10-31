@@ -13,9 +13,12 @@ import { TABLE_ACTION_CLASS } from './constants';
 export default class CopyExportPlugin extends Plugin {
   settings: CopyExportSettings = DEFAULT_SETTINGS;
   private outlineIntegration: ExperimentalOutlineIntegration | null = null;
+  /** Last Markdown view that had focus; Outline clicks can make it inactive. */
+  private lastMarkdownView: MarkdownView | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    this.trackActiveMarkdownView();
     this.registerCommands();
     this.registerEditorMenu();
     this.registerRenderedContentActions();
@@ -44,16 +47,38 @@ export default class CopyExportPlugin extends Plugin {
       if (!this.outlineIntegration) {
         this.outlineIntegration = new ExperimentalOutlineIntegration((headingText, line) => {
           const active = this.getActiveMarkdown();
-          if (!active) return;
+          if (!active) {
+            new Notice('Could not find the Markdown note associated with this Outline entry.');
+            return;
+          }
+
           const headings = findHeadings(active.editor.getValue());
+
+          // Outline DOM attributes may be zero-based or one-based depending on
+          // the Obsidian version. Prefer a line-and-text match, then fall back
+          // to the line alone and finally to the heading text.
           const heading = (line !== undefined
-            ? headings.find((candidate) => candidate.line === line)
-            : undefined) ?? headings.find((candidate) => candidate.text === headingText);
+            ? headings.find((candidate) =>
+                candidate.text === headingText &&
+                (candidate.line === line || candidate.line === line - 1))
+            : undefined)
+            ?? (line !== undefined
+              ? headings.find((candidate) =>
+                  candidate.line === line || candidate.line === line - 1)
+              : undefined)
+            ?? headings.find((candidate) => candidate.text === headingText);
+
           if (!heading) {
             new Notice('Could not resolve this Outline entry to a note heading.');
             return;
           }
-          new ExportModal(this.app, this.settings, () => this.getActiveMarkdown(), heading.line).open();
+
+          new ExportModal(
+            this.app,
+            this.settings,
+            () => this.getActiveMarkdown(),
+            heading.line,
+          ).open();
         });
       }
       this.outlineIntegration.enable();
@@ -64,8 +89,8 @@ export default class CopyExportPlugin extends Plugin {
 
   private registerCommands(): void {
     this.addCommand({
-      id: 'copykit',
-      name: 'CopyKit',
+      id: 'copy-and-export',
+      name: 'Copy / Export Content',
       callback: () => new ExportModal(this.app, this.settings, () => this.getActiveMarkdown()).open(),
     });
   }
@@ -178,9 +203,56 @@ export default class CopyExportPlugin extends Plugin {
     );
   }
 
+  /**
+   * Remember the most recently focused Markdown view. When a user right-clicks
+   * an Outline item, the Outline leaf may become active, so
+   * getActiveViewOfType(MarkdownView) can return null.
+   */
+  private trackActiveMarkdownView(): void {
+    const initiallyActive = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (initiallyActive) this.lastMarkdownView = initiallyActive;
+
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', (leaf) => {
+        if (leaf?.view instanceof MarkdownView) {
+          this.lastMarkdownView = leaf.view;
+        }
+      }),
+    );
+  }
+
   private getActiveMarkdown(): { view: MarkdownView; editor: Editor } | null {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    return view ? { view, editor: view.editor } : null;
+    const workspace = this.app.workspace;
+
+    // Prefer the active Markdown view whenever one is focused.
+    const activeView = workspace.getActiveViewOfType(MarkdownView);
+    if (activeView) {
+      this.lastMarkdownView = activeView;
+      return { view: activeView, editor: activeView.editor };
+    }
+
+    // If Outline has focus, resolve its note through the workspace's active
+    // file and the Markdown leaves currently displaying that file.
+    const activeFile = workspace.getActiveFile();
+    if (activeFile) {
+      const matchingLeaf = workspace.getLeavesOfType('markdown').find((leaf) => {
+        const view = leaf.view;
+        return view instanceof MarkdownView && view.file?.path === activeFile.path;
+      });
+
+      if (matchingLeaf?.view instanceof MarkdownView) {
+        this.lastMarkdownView = matchingLeaf.view;
+        return { view: matchingLeaf.view, editor: matchingLeaf.view.editor };
+      }
+    }
+
+    // Final fallback: the Markdown view that was active before Outline took
+    // focus. This is what allows the Outline context-menu action to open.
+    if (this.lastMarkdownView?.file) {
+      return { view: this.lastMarkdownView, editor: this.lastMarkdownView.editor };
+    }
+
+    return null;
   }
 
 }

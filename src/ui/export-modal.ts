@@ -19,7 +19,7 @@ export class ExportModal extends Modal {
 
   constructor(
     app: App,
-    private readonly settings: CopyExportSettings,
+    settings: CopyExportSettings,
     private readonly getActiveMarkdown: () => { view: MarkdownView; editor: Editor } | null,
     initialHeadingLine?: number,
   ) {

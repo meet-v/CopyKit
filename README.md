@@ -2,6 +2,17 @@
 
 > A plugin for all your copying and exporting needs. Allows copy/export of selected texts, headings, tables, images, and more.
 
+## Demo
+
+Export Selection
+![Plugin Demo - Export Selection](./images/export-selection.gif)
+
+Export Heading
+![Plugin Demo - Export Heading](./images/export-heading.gif)
+
+Export Table
+![Plugin Demo - Export Table](./images/export-table.gif)
+
 ## Features and Scope
 
 ### Unified Workflow
