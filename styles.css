@@ -1,0 +1,40 @@
+.cet-export-modal .cet-modal-description {
+  color: var(--text-muted);
+  margin-bottom: var(--size-4-3);
+}
+
+.cet-export-modal .cet-preview {
+  max-height: 18rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.cet-table-action {
+  margin-inline-start: var(--size-2-2);
+  opacity: 0.65;
+}
+
+.cet-table-action:hover {
+  opacity: 1;
+}
+
+.cet-outline-action {
+  margin-inline-start: auto;
+  opacity: 0.65;
+  flex: 0 0 auto;
+  font-size: 0.8em;
+}
+
+.cet-outline-action:hover,
+.cet-outline-action:focus-visible {
+  opacity: 1;
+}
+
+.cet-pdf-render-root {
+  box-sizing: border-box;
+}

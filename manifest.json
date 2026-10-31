@@ -1,0 +1,14 @@
+{
+  "id": "copykit",
+  "name": "Copy and Export Toolkit",
+  "version": "0.2.0",
+  "minAppVersion": "1.13.0",
+  "description": "Copy and export selected text, headings, tables, and images.",
+  "author": "Meet Vekaria",
+  "authorUrl": "https://github.com/meet-v",
+  "fundingUrl": {
+      "Buy Me a Coffee": "https://buymeacoffee.com/meet.v",
+      "GitHub Sponsor": "https://github.com/sponsors/meet-v"
+  },
+  "isDesktopOnly": false
+}
