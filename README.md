@@ -1,6 +1,8 @@
-# Copy & Export Toolkit
+# CopyKit
 
-> A plugin for all your copying and exporting needs. Allows copy/export of selected texts, headings, tables, images, and more.
+> CopyKit - Copy and Export Toolkit for Obsidian
+
+**A plugin for all your copying and exporting needs. Allows copy/export of selected texts, headings, tables, images, and more.**
 
 ## Demo
 
