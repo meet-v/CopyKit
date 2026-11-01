@@ -15,6 +15,9 @@ Export Heading
 Export Table
 ![Plugin Demo - Export Table](./images/export-table.gif)
 
+Copy Image to Clipboard
+![Plugin Demo - Copy Image](./images/copy-image.gif)
+
 ## Features and Scope
 
 ### Unified Workflow
