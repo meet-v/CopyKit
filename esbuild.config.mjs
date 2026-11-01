@@ -20,7 +20,7 @@ const options = {
 if (watch) {
   const context = await esbuild.context(options);
   await context.watch();
-  console.log("Watching source files...");
+  process.stdout.write("Watching source files.\n");
 } else {
   await esbuild.build(options);
 }

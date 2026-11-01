@@ -17,7 +17,17 @@ export async function createExportBlob(markdown: string, format: DownloadFormat)
 
   const container = document.createElement('div');
   container.className = 'cet-pdf-render-root';
-  container.style.cssText = 'position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#222;padding:32px;font-family:Arial,sans-serif;line-height:1.5;';
+  container.setCssStyles({
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: '760px',
+    background: '#fff',
+    color: '#222',
+    padding: '32px',
+    fontFamily: 'Arial, sans-serif',
+    lineHeight: '1.5',
+  });
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const content = parsed.body;
   container.append(...Array.from(content.childNodes).map((node) => node.cloneNode(true)));
