@@ -29,11 +29,11 @@ export function tableToDelimited(
 }
 
 export function tableToHtml(rows: readonly (readonly string[])[]): string {
-  const table = document.createElement('table');
+  const table = createEl('table');
   rows.forEach((row, rowIndex) => {
-    const tr = document.createElement('tr');
+    const tr = createEl('tr');
     row.forEach((cell) => {
-      const cellElement = document.createElement(rowIndex === 0 ? 'th' : 'td');
+      const cellElement = createEl(rowIndex === 0 ? 'th' : 'td');
       cellElement.textContent = cell;
       tr.append(cellElement);
     });

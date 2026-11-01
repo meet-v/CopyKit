@@ -38,12 +38,11 @@ Choose an action and format:
 | Export | Plain text | `.txt` file |
 | Export | Formatted text | `.html` file |
 
-PDF and HTML conversion use `marked`, DOMPurify, jsPDF, and html2canvas. Exported HTML is sanitized before it is copied or rendered for PDF generation. Remote images may not appear in PDF output because cross-origin image access is restricted.
+PDF and HTML conversion use `marked`, DOMPurify, `html2canvas`, and `pdf-lib`. Exported HTML is sanitized before it is copied or rendered for PDF generation. PDF pages are rendered as images, so text in PDF files is not selectable. Remote images may not appear in PDF output because cross-origin image access is restricted. PDF generation does not use runtime script injection.
 
 ### Tables and images
 
 - Rendered tables have a **Copy / Export** action button with Markdown, HTML, CSV, and TSV copy options.
-- Rendered images have an **Image actions** button for copying the image or saving it into the vault.
 - The plugin no longer intercepts the document-wide right-click event or creates a replacement context menu. Obsidian's native context menu remains available.
 - Obsidian does not currently expose a stable public API for appending plugin actions to the rendered-preview table context menu. The table action button is used instead. In the editor context menu, the plugin adds one **CopyKit…** item.
 
@@ -87,8 +86,6 @@ The development build writes `main.js` into the project root. The runtime files 
 - [ ] Confirm clipboard behavior on macOS, Windows, and Linux.
 - [ ] Verify heading extraction with duplicate headings, nested headings, setext headings, and frontmatter.
 - [ ] Verify table conversion with escaped pipes, inline code, links, and empty cells.
-- [ ] Verify image copy for local PNG/JPEG/WebP and remote images with/without CORS.
-- [ ] Verify image save path collisions and folder creation.
 - [ ] Test on mobile separately before claiming mobile support.
 - [ ] Decide whether Outline integration is worth maintaining.
 - [ ] Review current Obsidian API declarations before upgrading the `obsidian` dependency.
@@ -146,7 +143,6 @@ Use conventional commit prefixes: `feat`, `fix`, `refactor`, `test`, `docs`, `bu
 - No telemetry or third-party network calls are included by plugin code.
 - HTML conversion sanitizes generated HTML before clipboard use and PDF rendering.
 - Clipboard writes require a supported clipboard API and a user gesture.
-- Image clipboard support varies by runtime; remote image saving can fail because of CORS, authentication, or network restrictions.
 - Table conversion preserves displayed cell text, not necessarily every original Markdown formatting detail.
 - PDF rendering is asynchronous and may differ slightly from Word or Obsidian's native rendering. Test large notes, tables, and images in your target Obsidian version.
 - The Outline adapter relies on private DOM structure and is experimental.
@@ -163,7 +159,7 @@ npm test
 npm run build
 ```
 
-Then manually test selection copy/export, duplicate and nested headings, formatted paste into Word, PDF page breaks, table actions, image actions, and Outline actions in a disposable vault.
+Then manually test selection copy/export, duplicate and nested headings, formatted paste into Word, PDF page breaks, table actions, and Outline actions in a disposable vault.
 
 ### Versioning
 

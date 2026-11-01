@@ -1,14 +1,31 @@
-import { Editor, MarkdownView, Menu, Notice, Plugin } from 'obsidian';
+import { Editor, MarkdownView, Menu, Notice, Plugin, setIcon } from 'obsidian';
 import { DEFAULT_SETTINGS } from './types/settings';
-import type { CopyExportSettings, TableFormat } from './types/settings';
+import type { CopyExportSettings, TableFormat , ExportFormat, CopyFormat} from './types/settings';
 import { CopyExportSettingTab } from './ui/settings';
 import { ExportModal } from './ui/export-modal';
 import { copyText, copyHtml } from './services/clipboard';
-import { copyImageFromUrl, saveImageToVault } from './services/image';
+import { copyImageFromUrl } from './services/image';
 import { convertTable } from './utils/table';
 import { findHeadings } from './utils/markdown';
 import { ExperimentalOutlineIntegration } from './experimental/outline-integration';
 import { TABLE_ACTION_CLASS } from './constants';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCopyFormat(value: unknown): value is CopyFormat {
+  return value === 'markdown' || value === 'text' || value === 'html';
+}
+
+function isExportFormat(value: unknown): value is ExportFormat {
+  return (
+    value === 'markdown' ||
+    value === 'text' ||
+    value === 'html' ||
+    value === 'pdf'
+  );
+}
 
 export default class CopyExportPlugin extends Plugin {
   settings: CopyExportSettings = DEFAULT_SETTINGS;
@@ -31,7 +48,27 @@ export default class CopyExportPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data: unknown = await this.loadData();
+
+    if (!isRecord(data)) {
+      this.settings = { ...DEFAULT_SETTINGS };
+      return;
+    }
+
+    this.settings = {
+      defaultCopyFormat: isCopyFormat(data.defaultCopyFormat)
+        ? data.defaultCopyFormat
+        : DEFAULT_SETTINGS.defaultCopyFormat,
+
+      defaultExportFormat: isExportFormat(data.defaultExportFormat)
+        ? data.defaultExportFormat
+        : DEFAULT_SETTINGS.defaultExportFormat,
+
+      enableExperimentalOutline:
+        typeof data.enableExperimentalOutline === 'boolean'
+          ? data.enableExperimentalOutline
+          : DEFAULT_SETTINGS.enableExperimentalOutline,
+    };
   }
 
   async saveSettings(): Promise<void> {
@@ -105,18 +142,21 @@ export default class CopyExportPlugin extends Plugin {
   }
 
   private registerRenderedContentActions(): void {
-    // Do not intercept the native contextmenu event. Obsidian does not expose
-    // a public preview-table menu extension point; the action button below
-    // opens our table actions without suppressing Obsidian's own menu.
+
     this.registerMarkdownPostProcessor((element) => {
+      
+      // Table Export Button
       element.querySelectorAll('table').forEach((table) => {
         if (table.dataset.cetActionAdded === 'true') return;
         table.dataset.cetActionAdded = 'true';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `clickable-icon ${TABLE_ACTION_CLASS}`;
-        button.setAttribute('aria-label', 'Copy or export table');
-        button.textContent = 'Copy / Export';
+        const button = createEl('button', {
+          cls: `clickable-icon ${TABLE_ACTION_CLASS}`,
+          attr: {
+            type: 'button',
+            'aria-label': 'Copy or export table',
+          },
+          text: 'Copy / Export',
+        });
         button.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -126,24 +166,110 @@ export default class CopyExportPlugin extends Plugin {
         });
         table.parentElement?.insertBefore(button, table);
       });
-      element.querySelectorAll('img').forEach((image) => {
-        if (image.dataset.cetActionAdded === 'true') return;
-        image.dataset.cetActionAdded = 'true';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `clickable-icon ${TABLE_ACTION_CLASS}`;
-        button.setAttribute('aria-label', 'Copy or save image');
-        button.textContent = 'Image actions';
-        button.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const menu = new Menu();
-          this.addImageMenuItems(menu, image);
-          menu.showAtPosition({ x: button.getBoundingClientRect().left, y: button.getBoundingClientRect().bottom });
-        });
-        image.parentElement?.insertBefore(button, image);
+    });
+
+    // Detect embedded images that Obsidian inserts after Markdown processing.
+    const addImageAction = (image: HTMLImageElement): void => {
+      const imageHost = image.closest('.image-embed, .image-wrapper');
+
+      if (!(imageHost instanceof HTMLElement)) return;
+
+      // Explicitly exclude Live Preview and other source-editor views.
+      const isReadingView =
+        image.closest('.markdown-preview-view') !== null &&
+        image.closest('.markdown-source-view') === null;
+
+      if (!isReadingView) {
+        const previousElement = imageHost.previousElementSibling;
+
+        if (
+          previousElement instanceof HTMLButtonElement &&
+          previousElement.dataset.cetImageAction === 'true'
+        ) {
+          previousElement.remove();
+        }
+
+        delete image.dataset.cetActionAdded;
+        return;
+      }
+
+      if (image.dataset.cetActionAdded === 'true') return;
+
+      const button = createEl('button', {
+        cls: 'clickable-icon',
+        attr: {
+          type: 'button',
+          'aria-label': 'Copy image',
+        },
+      });
+
+      setIcon(button, 'image');
+      button.dataset.cetImageAction = 'true';
+
+      button.addEventListener('click', async (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        try {
+          await copyImageFromUrl(image.currentSrc || image.src, this.app);
+          new Notice('Image copied to clipboard.');
+        } catch (error) {
+          new Notice(
+            error instanceof Error
+              ? error.message
+              : 'Unable to copy image to clipboard.',
+          );
+        }
+      });;
+
+      imageHost.insertAdjacentElement('beforebegin', button);
+      image.dataset.cetActionAdded = 'true';
+    };
+
+    const processNode = (node: Node): void => {
+      if (!(node instanceof HTMLElement)) return;
+
+      if (node instanceof HTMLImageElement) {
+        addImageAction(node);
+      }
+
+      node.querySelectorAll<HTMLImageElement>(
+        '.image-embed img, .image-wrapper img, img.image-embed',
+      ).forEach(addImageAction);
+    };
+
+    // Process images already present.
+    document.querySelectorAll<HTMLImageElement>(
+      '.image-embed img, .image-wrapper img, img.image-embed',
+    ).forEach(addImageAction);
+
+    // Process images inserted later by Obsidian.
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach(processNode);
       });
     });
+
+    // Hide image action buttons inside Live Preview.
+    const imageButtonStyle = createEl('style');
+
+    imageButtonStyle.textContent = `
+      .markdown-source-view button[aria-label="Copy image"] {
+        display: none !important;
+      }
+    `;
+
+    document.head.appendChild(imageButtonStyle);
+
+    this.register(() => imageButtonStyle.remove());
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Disconnect the observer when the plugin unloads.
+    this.register(() => observer.disconnect());
   }
 
   private addTableMenuItems(menu: Menu, table: HTMLTableElement): void {
@@ -169,32 +295,6 @@ export default class CopyExportPlugin extends Plugin {
           }
         }));
     });
-  }
-
-  private addImageMenuItems(menu: Menu, image: HTMLImageElement): void {
-    const source = image.currentSrc || image.src;
-    menu.addItem((item) => item
-      .setTitle('Copy image')
-      .setIcon('image')
-      .onClick(async () => {
-        try {
-          await copyImageFromUrl(source, this.app);
-          new Notice('Image copied.');
-        } catch (error) {
-          new Notice(error instanceof Error ? error.message : 'Unable to copy image.');
-        }
-      }));
-    menu.addItem((item) => item
-      .setTitle('Save image to vault')
-      .setIcon('download')
-      .onClick(async () => {
-        try {
-          const path = await saveImageToVault(source, this.settings.imageFolder, this.app);
-          new Notice(`Image saved to ${path}.`);
-        } catch (error) {
-          new Notice(error instanceof Error ? error.message : 'Unable to save image.');
-        }
-      }));
   }
 
   private readTable(table: HTMLTableElement): string[][] {

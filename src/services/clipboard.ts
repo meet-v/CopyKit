@@ -31,7 +31,7 @@ export async function copyImage(blob: Blob): Promise<void> {
 async function convertToPng(blob: Blob): Promise<Blob> {
   const bitmap = await createImageBitmap(blob);
   try {
-    const canvas = document.createElement('canvas');
+    const canvas = createEl('canvas');
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
     const context = canvas.getContext('2d');

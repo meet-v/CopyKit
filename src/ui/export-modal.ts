@@ -86,7 +86,9 @@ export class ExportModal extends Modal {
       new Setting(contentEl)
         .setName('Heading level')
         .addDropdown((dropdown) => {
-          levels.forEach((level) => dropdown.addOption(String(level), `H${level}`));
+        for (const level of levels) {
+          dropdown.addOption(String(level), `H${level}`);
+        }
           dropdown.setValue(String(levels.includes(this.headingLevel) ? this.headingLevel : levels[0] ?? 1));
           dropdown.onChange((value) => { this.headingLevel = Number(value); this.selectedLine = -1; this.preview = ''; this.render(); });
         });
@@ -95,7 +97,12 @@ export class ExportModal extends Modal {
         .setName('Heading')
         .addDropdown((dropdown) => {
           dropdown.addOption('', 'Choose a heading');
-          matches.forEach((heading) => dropdown.addOption(String(heading.line), `${heading.text} (line ${heading.line + 1})`));
+          for (const heading of matches) {
+            dropdown.addOption(
+              String(heading.line),
+              `${heading.text} (line ${heading.line + 1})`,
+            );
+          }
           dropdown.setValue(this.selectedLine >= 0 ? String(this.selectedLine) : '');
           dropdown.onChange((value) => {
             this.selectedLine = value ? Number(value) : -1;

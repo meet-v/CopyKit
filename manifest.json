@@ -1,7 +1,7 @@
 {
   "id": "copykit",
   "name": "CopyKit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.13.0",
   "description": "Copy and export selected text, headings, tables, and images.",
   "author": "Meet Vekaria",

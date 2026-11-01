@@ -1,6 +1,6 @@
 {
   "name": "obsidian-copykit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Source project for an Obsidian copy and export toolkit plugin.",
   "scripts": {
@@ -13,13 +13,12 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",
     "esbuild": "^0.28.2",
-    "eslint": "^9.39.5",
-    "eslint-plugin-obsidianmd": "latest",
+    "eslint": "^10.14.0",
     "globals": "^16.0.0",
-    "obsidian": "^1.13.2",
+    "obsidian": "^1.14.4",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.72.1",
@@ -28,7 +27,12 @@
   "dependencies": {
     "dompurify": "^3.2.6",
     "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
-    "marked": "^15.0.12"
+    "marked": "^15.0.12",
+    "moment": "^2.31.0",
+    "pdf-lib": "^1.17.1"
+  },
+  "overrides": {
+    "moment": "^2.31.0",
+    "minimatch": "11.0.1"
   }
 }
