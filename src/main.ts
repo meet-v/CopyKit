@@ -206,20 +206,22 @@ export default class CopyExportPlugin extends Plugin {
       setIcon(button, 'image');
       button.dataset.cetImageAction = 'true';
 
-      button.addEventListener('click', async (event: MouseEvent) => {
+      button.addEventListener('click', (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
 
-        try {
-          await copyImageFromUrl(image.currentSrc || image.src, this.app);
-          new Notice('Image copied to clipboard.');
-        } catch (error) {
-          new Notice(
-            error instanceof Error
-              ? error.message
-              : 'Unable to copy image to clipboard.',
-          );
-        }
+        void (async() => {
+          try {
+            await copyImageFromUrl(image.currentSrc || image.src, this.app);
+            new Notice('Image copied to clipboard.');
+          } catch (error) {
+            new Notice(
+              error instanceof Error
+                ? error.message
+                : 'Unable to copy image to clipboard.',
+            );
+          }
+        })
       });;
 
       imageHost.insertAdjacentElement('beforebegin', button);
@@ -227,9 +229,9 @@ export default class CopyExportPlugin extends Plugin {
     };
 
     const processNode = (node: Node): void => {
-      if (!(node instanceof HTMLElement)) return;
+      if (!node.instanceOf(HTMLElement)) return;
 
-      if (node instanceof HTMLImageElement) {
+      if (node.instanceOf(HTMLImageElement)) {
         addImageAction(node);
       }
 
